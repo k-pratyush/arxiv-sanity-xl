@@ -1,7 +1,12 @@
-from fastapi import FastAPI, Depends
-from .database import SessionLocal
-from .utils import get_embedding
-# import schemas
+from fastapi import FastAPI
+from .database import SessionLocal, engine
+from .utils import get_embedding, test_data_load
+from sqlalchemy import text
+import logging
+from .schemas import Query
+
+logger = logging.getLogger('uvicorn.debug')
+logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
 
@@ -16,11 +21,39 @@ def get_db():
 async def home():
     return {"success": True}
 
-@app.post("/document")
-async def create_embedding():
-    # get_embedding
-    pass
+@app.get("/load")
+async def load():
+    result = test_data_load("papers/1706.03762v7.pdf")
+    return result
 
-@app.get("/document")
-async def get_document():
-    pass
+@app.get("/match")
+async def match(query: str, limit: int = 5):
+    embedding = get_embedding(query)
+    with engine.connect() as conn:
+        result = conn.execute(text(f"""select distinct a.name, a.url from (select * from document doc
+                                   inner join document_embedding emb on doc.id = emb.document_id
+                                   order by emb.embedding <-> '{embedding}' limit {limit}) a"""))
+    names, urls = list(zip(*[(row[0], row[1]) for row in result]))
+    return {
+        "success": True,
+        "data": {
+            "names": names,
+            "urls": urls
+        }
+    }
+
+@app.post("/embedding")
+async def create_embedding(query: Query):
+    try:
+        embedding = get_embedding(query.query)
+        return {
+            "success": True,
+            "data": embedding
+        }
+    except Exception as e:
+        print(e)
+        logging.debug(e)
+        return {
+            "success": False,
+            "data": e
+        }
