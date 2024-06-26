@@ -1,9 +1,13 @@
-from pypdf import PdfReader
-from sentence_transformers import SentenceTransformer
-from .models import Document, DocumentEmbedding
+import os
 import datetime
+
+import arxiv
+
+from pypdf import PdfReader
 from .database import SessionLocal
 from sqlalchemy.exc import IntegrityError
+from .models import Document, DocumentEmbedding
+from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
@@ -27,16 +31,70 @@ def extract_text(document_path):
         text = text + f"<|{page_num + 1}|> {page_text.extract_text()}"
     return text
 
-def bulk_data_load():
-    pass
+def download_papers(documents_path, paper_count):
+    query = "cat:cs.CV OR cat:cs.AI OR cat:cs.NE OR cat:cs.PF"
+    client = arxiv.Client()
+    search = arxiv.Search(
+        query=query,
+        max_results=paper_count
+    )
+    results = client.results(search)
+    meta = {}
+    for paper in results:
+        meta[f"{paper.title}.pdf"] = {
+            "file_name": paper.entry_id,
+            "title": paper.title,
+            "url": paper.pdf_url,
+            "authors": paper.authors,
+            "summary": paper.summary
+        }
+        paper.download_pdf(dirpath=f"./{documents_path}/", filename=f"{paper.title}.pdf")
+    return meta
+
+def bulk_data_load(documents_path, paper_count):
+    db = SessionLocal()
+
+    paper_meta = download_papers(documents_path, paper_count)
+    files = [file for file in os.listdir(documents_path) if ".pdf" in file]
+    try:
+        for file in files:
+            file_text = extract_text(f"{documents_path}/{file}")
+            document_data = {
+                "name": paper_meta[file]["title"],
+                "url": paper_meta[file]["url"],
+                "created_date": datetime.date.today(),
+                "document": file_text[:65535]
+            }
+            doc = Document(**document_data)
+            db.add(doc)
+            db.flush()
+            db.refresh(doc)
+            chunked_document = chunk_data(document_data["document"])
+
+            for (chunk_id, text) in chunked_document:
+                DocEmbed = DocumentEmbedding(embedding=get_embedding(text),
+                            document_id = doc.id, chunk=chunk_id, created_date = datetime.date.today())
+                db.add(DocEmbed)
+            file_path = f"{documents_path}/{file}"
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+        db.commit()
+        return {
+            "message": "Data loaded"
+        }
+    except IntegrityError as e:
+        return {
+            "message": "Unique constraint error"
+        }
 
 def test_data_load(document_path):
     try:
         data = {
-        "name": "Attention Is All You Need",
-        "url": "https://arxiv.org/abs/1706.03762",
-        "created_date": datetime.date.today(),
-        "document": extract_text(document_path)[:65535]
+            "name": "Attention Is All You Need",
+            "url": "https://arxiv.org/abs/1706.03762",
+            "created_date": datetime.date.today(),
+            "document": extract_text(document_path)[:65535]
         }
 
         db = SessionLocal()
@@ -54,7 +112,6 @@ def test_data_load(document_path):
         
         return {
             "success": True,
-            "data": chunked_data,
             "message": "Data loaded"
         }
     except IntegrityError as e:

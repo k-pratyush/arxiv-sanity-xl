@@ -19,3 +19,11 @@ class DocumentEmbedding(Base):
     document_id = Column(Integer, ForeignKey("document.id"))
     chunk = Column(Integer)
     created_date = Column(Date)
+
+class User(Base):
+    __tablename__ = "user"
+
+    id = Column(Integer, primary_key=True, unique=True,autoincrement=True)
+    user_id = Column(String, unique=True)
+    preferences = Column(Vector(384))
+    created_date = Column(Date)
