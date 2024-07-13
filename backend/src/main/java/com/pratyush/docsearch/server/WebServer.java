@@ -37,6 +37,10 @@ public class WebServer {
         server.start();
     }
 
+    public void stop() {
+        server.stop(10);
+    }
+
     private void handleStatusCheckRequest(HttpExchange exchange) throws IOException {
         if(!(exchange.getRequestMethod().equalsIgnoreCase("get"))) {
             exchange.close();

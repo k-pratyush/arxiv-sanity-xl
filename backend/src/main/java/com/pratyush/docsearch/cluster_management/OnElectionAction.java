@@ -5,24 +5,46 @@ import java.net.UnknownHostException;
 
 import org.apache.zookeeper.KeeperException;
 
+import com.pratyush.docsearch.search.SearchCoordinator;
 import com.pratyush.docsearch.search.SearchWorker;
+import com.pratyush.docsearch.server.WebClient;
 import com.pratyush.docsearch.server.WebServer;
 
 public class OnElectionAction implements OnElectionCallback {
-    private final ServiceRegistry serviceRegistry;
+    private final ServiceRegistry workerServiceRegistry;
+    private final ServiceRegistry coordinatorServiceRegistry;
     private final int port;
     private WebServer webServer;
 
-    public OnElectionAction(ServiceRegistry serviceRegistry, int port) {
-        this.serviceRegistry = serviceRegistry;
+    public OnElectionAction(ServiceRegistry workerServiceRegistry, ServiceRegistry coordinatorServiceRegistry, int port) {
+        this.workerServiceRegistry = workerServiceRegistry;
+        this.coordinatorServiceRegistry = coordinatorServiceRegistry;
         this.port = port;
     }
 
     @Override
     public void onElectedToBeLeader() {
         try {
-            serviceRegistry.unregisterFromCluster();
-            serviceRegistry.registerForUpdates();
+            workerServiceRegistry.unregisterFromCluster();
+            workerServiceRegistry.registerForUpdates();
+
+            if(webServer != null) {
+                webServer.stop();
+            }
+
+            SearchCoordinator searchCoordinator = new SearchCoordinator(workerServiceRegistry, new WebClient());
+            WebServer webServer = new WebServer(port, searchCoordinator);
+            webServer.startServer();
+
+            try {
+                String currentServerAddress = String.format("http://%s:%d",InetAddress.getLocalHost().getCanonicalHostName(),
+                                                port, searchCoordinator.getEndpoint());
+                coordinatorServiceRegistry.registerToCluster(currentServerAddress);
+            } catch(Exception e) {
+                e.printStackTrace();
+                return;
+            }
+
         } catch (KeeperException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -38,7 +60,7 @@ public class OnElectionAction implements OnElectionCallback {
             webServer.startServer();
             String currentServerAddress = String.format("http://%s:%d",InetAddress.getLocalHost().getCanonicalHostName(),
                                                 port, searchWorker.getEndpoint());
-            serviceRegistry.registerToCluster(currentServerAddress);
+            workerServiceRegistry.registerToCluster(currentServerAddress);
         } catch (KeeperException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
