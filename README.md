@@ -14,7 +14,9 @@
 - Andrej Karpathy - Arxiv Sanity
 
 #### TODO
-- [ ] Routing Server
+- [ ] Routing Server - Process & Recommendations
 - [ ] UI
+- [ ] Model worker queue
 - [ ] Deploy (Oracle cloud?)
 - [ ] Scraper Daemon
+- [ ] Implement pagination
