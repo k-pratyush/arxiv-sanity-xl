@@ -1,4 +1,5 @@
 {
     "search": "select distinct a.name, a.url from (select * from document doc inner join document_embedding emb on doc.id = emb.document_id order by emb.embedding <-> '{embedding}' limit {limit}) a",
-    "recommendations": "select distinct a.name, a.url from (select * from document doc inner join document_embedding emb on doc.id = emb.document_id order by emb.embedding <-> (select users.preference_vector from users where user_id = '{user_id}') limit {limit}) a"
+    "recommendations": "select distinct a.name, a.url from (select * from document doc inner join document_embedding emb on doc.id = emb.document_id order by emb.embedding <-> (select users.preference_vector from users where user_id = '{user_id}') limit {limit}) a",
+    "last_load_id": "select max(id) from document"
 }

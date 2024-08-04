@@ -2,6 +2,8 @@ __pycache__
 target
 papers
 
+.DS_Store
+
 # Compiled class file
 *.class
 .env

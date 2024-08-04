@@ -2,11 +2,12 @@ import json
 import logging
 import datetime
 
-from .schemas import Query, UserDetails
-from .models import Users
-from sqlalchemy import text, select, update
 from fastapi import FastAPI
-from .database import SessionLocal, engine
+
+from .models import Users
+from .database import SessionLocal
+from .schemas import Query, UserDetails
+from sqlalchemy import text, select, update
 from .utils import get_embedding, test_data_load, bulk_data_load
 
 
@@ -23,7 +24,7 @@ def get_db():
         db.close()
 
 def load_queries():
-    with open("api/query.json", "r") as f:
+    with open("query.json", "r") as f:
         queries = json.loads(f.read())
     return queries
 
@@ -36,12 +37,22 @@ async def load():
     result = test_data_load("papers/1706.03762v7.pdf")
     return result
 
-@app.get("/bulk_load")
-async def bulk_load():
-    result = bulk_data_load("papers", 10)
-    return {
-            "success": True,
-            "data": result
+@app.get("/bulk_load/{num_papers}")
+async def bulk_load(num_papers: int = 10):
+    # TODO: Fix path bug
+    try:
+        result = bulk_data_load("papers", num_papers)
+        return {
+                "success": True,
+                "data": result
+            }
+    except Exception as e:
+        print(e)
+        return {
+            "success": False,
+            "data": {
+                "message": e
+            }
         }
 
 @app.get("/search")
@@ -50,9 +61,10 @@ async def search(query: str, limit: int = 5):
     db = next(get_db())
     queries = load_queries()
     result = db.execute(text(queries["search"]
-                             .format(embedding=embedding, limit=limit))).scalars().all()
+                             .format(embedding=embedding, limit=limit))).fetchall()
     # TODO: Handle if no data is found in DB
     names, urls = list(zip(*[(row[0], row[1]) for row in result]))
+    print(*result)
     return {
         "success": True,
         "data": {
@@ -138,6 +150,7 @@ async def save_user_preferences(user_id: str, preferences: str):
 
         if user:
             user.preferences = preferences
+            user.preference_vector = get_embedding(preferences)
             db.execute(update(Users), [user.json()])
             db.commit()
             return {
@@ -172,7 +185,7 @@ async def get_recommendations(user_id: str, limit: int = 4):
 
         if user:
             # TODO: Handle if no data is found in DB
-            recommendations = db.execute(text(queries["recommendations"].format(user_id=user_id, limit=limit))).scalars().all()
+            recommendations = db.execute(text(queries["recommendations"].format(user_id=user_id, limit=limit))).fetchall()
             names, urls = list(zip(*[(row[0], row[1]) for row in recommendations]))
             return {
                 "success": True,
