@@ -4,6 +4,10 @@ papers
 
 .DS_Store
 
+# core
+application.properties
+.vscode
+
 # Compiled class file
 *.class
 .env
