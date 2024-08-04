@@ -1,3 +1,4 @@
+import json
 import logging
 import datetime
 
@@ -21,6 +22,11 @@ def get_db():
     finally:
         db.close()
 
+def load_queries():
+    with open("api/query.json", "r") as f:
+        queries = json.loads(f.read())
+    return queries
+
 @app.get("/")
 async def home():
     return {"success": True}
@@ -41,11 +47,10 @@ async def bulk_load():
 @app.get("/search")
 async def search(query: str, limit: int = 5):
     embedding = get_embedding(query)
-    with engine.connect() as conn:
-        result = conn.execute(text(f"""select distinct a.name, a.url from (select * from document doc
-                                   inner join document_embedding emb on doc.id = emb.document_id
-                                   order by emb.embedding <-> '{embedding}' limit {limit}) a"""))
-
+    db = next(get_db())
+    queries = load_queries()
+    result = db.execute(text(queries["search"]
+                             .format(embedding=embedding, limit=limit))).scalars().all()
     # TODO: Handle if no data is found in DB
     names, urls = list(zip(*[(row[0], row[1]) for row in result]))
     return {
@@ -56,7 +61,7 @@ async def search(query: str, limit: int = 5):
         }
     }
 
-# Move to Springboot app
+# TODO: Move to Springboot app
 @app.post("/users")
 async def add_user(user_details: UserDetails):
     try:
@@ -163,23 +168,19 @@ async def get_recommendations(user_id: str, limit: int = 4):
     try:
         db = next(get_db())
         user = db.execute(select(Users).filter_by(user_id=user_id)).scalars().first()
+        queries = load_queries()
 
         if user:
-            with engine.connect() as conn:
-                recommendations = conn.execute(text(f"""select distinct a.name, a.url from (select * from document doc
-                                                    inner join document_embedding emb on doc.id = emb.document_id
-                                                    order by emb.embedding <-> (select users.preference_vector from users
-                                                    where user_id = '{user_id}') limit {limit}) a
-                                                    """))
-                # TODO: Handle if no data is found in DB
-                names, urls = list(zip(*[(row[0], row[1]) for row in recommendations]))
-                return {
-                    "success": True,
-                    "data": {
-                        "names": names,
-                        "urls": urls
-                    }
+            # TODO: Handle if no data is found in DB
+            recommendations = db.execute(text(queries["recommendations"].format(user_id=user_id, limit=limit))).scalars().all()
+            names, urls = list(zip(*[(row[0], row[1]) for row in recommendations]))
+            return {
+                "success": True,
+                "data": {
+                    "names": names,
+                    "urls": urls
                 }
+            }
         else:
             return {
                 "success": False,
@@ -197,7 +198,7 @@ async def get_recommendations(user_id: str, limit: int = 4):
 @app.post("/embedding")
 async def create_embedding(query: Query):
     try:
-        embedding = get_embedding(query)
+        embedding = get_embedding(query.query)
         return {
             "success": True,
             "data": embedding
