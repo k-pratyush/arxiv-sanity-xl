@@ -49,23 +49,36 @@ def download_papers(documents_path, offset, paper_count, latest_papers=False):
 
     search = arxiv.Search(
         query=query,
-        max_results=offset + paper_count,
-        sort_by = arxiv.SortCriterion.SubmittedDate
+        max_results=offset + paper_count + 1,
+        sort_by = arxiv.SortCriterion.SubmittedDate,
+        sort_order=arxiv.SortOrder.Ascending
     )
 
-    results = client.results(search, offset)
+    results = client.results(search, offset + 1)
     meta = {}
+
     for paper in results:
+        paper_path = f"{documents_path}/{paper.title}.pdf"
+        paper.download_pdf(dirpath=f"{documents_path}/", filename=f"{paper.title}.pdf")
+
+        try:
+            file_text = extract_text(paper_path)[:65535]
+        except InvalidPdfException as e:
+            file_text = paper.summary[:65535]
+
         meta[f"{paper.title}.pdf"] = {
             "file_name": paper.entry_id,
             "title": paper.title,
             "url": paper.pdf_url,
             "authors": paper.authors,
-            "summary": paper.summary
+            "summary": paper.summary,
+            "document": file_text,
+            "paper_path": paper_path
         }
-        paper.download_pdf(dirpath=f"./{documents_path}/", filename=f"{paper.title}.pdf")
+
     return meta
 
+# TODO: Fix bug - Duplicate loads when re-running bulk load API
 def bulk_data_load(documents_path, paper_count, latest_papers=False):
     db = SessionLocal()
 
@@ -81,52 +94,43 @@ def bulk_data_load(documents_path, paper_count, latest_papers=False):
         offset = 0
 
     paper_meta = download_papers(documents_path, offset, paper_count, latest_papers)
-    files = [file for file in os.listdir(documents_path) if ".pdf" in file]
+    files = paper_meta.keys()
+
     try:
         for file in files:
-            try:
-                file_text = extract_text(f"{documents_path}/{file}")
-                document_data = {
-                    "name": paper_meta[file]["title"],
-                    "url": paper_meta[file]["url"],
-                    "created_date": datetime.date.today(),
-                    "document": file_text[:65535]
-                }
-                doc = Document(**document_data)
-                db.add(doc)
-                db.flush()
-                db.refresh(doc)
-                chunked_document = chunk_data(document_data["document"])
-                for (chunk_id, text) in chunked_document:
-                    DocEmbed = DocumentEmbedding(embedding=get_embedding(text),
-                                                document_id = doc.id, chunk=chunk_id,
-                                                created_date = datetime.date.today())
-                    db.add(DocEmbed)
-                file_path = f"{documents_path}/{file}"
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            except InvalidPdfException as e:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                continue
+            document_data = {
+                "name": paper_meta[file]["title"],
+                "url": paper_meta[file]["url"],
+                "created_date": datetime.date.today(),
+                "document": paper_meta[file]["document"]
+            }
+
+            doc = Document(**document_data)
+            db.add(doc)
+            db.flush()
+            db.refresh(doc)
+
+            chunked_document = chunk_data(document_data["document"])
+            for (chunk_id, text) in chunked_document:
+                DocEmbed = DocumentEmbedding(embedding=get_embedding(text),
+                                            document_id = doc.id, chunk=chunk_id,
+                                            created_date = datetime.date.today())
+                db.add(DocEmbed)
+
         db.commit()
-        for file in os.listdir(f"{documents_path}"):
-            if ".pdf" in file:
-                os.remove(file)
+        clear_directory(documents_path)
+
         return {
             "message": "Data loaded"
         }
+
     except IntegrityError as e:
-        for file in os.listdir(f"{documents_path}"):
-            if ".pdf" in file:
-                os.remove(file)
+        clear_directory(documents_path)
         return {
             "message": "Unique constraint error"
         }
     except Exception as e:
-        for file in os.listdir(f"{documents_path}"):
-            if ".pdf" in file:
-                os.remove(file)
+        clear_directory(documents_path)
         raise e
     finally:
         db.close()
@@ -162,6 +166,13 @@ def test_data_load(document_path):
             "success": False,
             "message": "Unique constraint error"
         }
+
+def clear_directory(directory):
+    print(directory)
+    for file in os.listdir(directory):
+        print(file)
+        if ".pdf" in file and os.path.exists(f"{directory}/{file}"):
+            os.remove(f"{directory}/{file}")
 
 if __name__ == "__main__":
     test_data_load()

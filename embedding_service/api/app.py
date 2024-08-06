@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 import datetime
@@ -40,9 +41,10 @@ async def load():
 
 @app.get("/bulk_load/{num_papers}")
 async def bulk_load(num_papers: int = 10):
-    # TODO: Fix path bug
     try:
-        result = bulk_data_load("papers", num_papers)
+        fullpath = os.path.realpath(__file__)
+        path, _ = os.path.split(fullpath)
+        result = bulk_data_load(f"{path}/papers", num_papers)
         return {
                 "success": True,
                 "data": result
