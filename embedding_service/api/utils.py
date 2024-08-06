@@ -35,6 +35,7 @@ def extract_text(document_path):
             text = text + f"<|{page_num + 1}|> {page_text.extract_text().encode('UTF-8')}"
         return text
     except Exception as e:
+        # Store paper description
         raise InvalidPdfException("Text Encoding Error", e)
 
 def download_papers(documents_path, offset, paper_count, latest_papers=False):

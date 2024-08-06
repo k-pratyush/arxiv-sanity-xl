@@ -4,6 +4,7 @@ import datetime
 
 from fastapi import FastAPI
 
+from services.embedding_api import EmbeddingApi
 from .models import Users
 from .database import SessionLocal
 from .schemas import Query, UserDetails
@@ -211,10 +212,10 @@ async def get_recommendations(user_id: str, limit: int = 4):
 @app.post("/embedding")
 async def create_embedding(query: Query):
     try:
-        embedding = get_embedding(query.query)
+        result = EmbeddingApi().process_request(query.query)
         return {
             "success": True,
-            "data": embedding
+            "data": result
         }
     except Exception as e:
         print(e)
