@@ -17,6 +17,22 @@ public class Document {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private String name;
-    private String embedding;
+    private String url;
     private Date created_date;
+
+    public Long getId() {
+        return this.id;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public String getUrl() {
+        return this.url;
+    }
+
+    public Date getDate() {
+        return this.created_date;
+    }
 }
