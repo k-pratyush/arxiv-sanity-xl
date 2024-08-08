@@ -27,7 +27,7 @@ public class Users {
 
     @JdbcTypeCode(SqlTypes.VECTOR)
     @Array(length = 384)
-    private float[] preference_vector;
+    private double[] preference_vector;
     private Date created_date;
 
     public Long getId() {
@@ -38,7 +38,7 @@ public class Users {
         return this.user_id;
     }
 
-    public float[] getPreferenceVector() {
+    public double[] getPreferenceVector() {
         return this.preference_vector;
     }
 

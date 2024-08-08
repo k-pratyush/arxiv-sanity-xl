@@ -21,6 +21,7 @@ import jakarta.persistence.GenerationType;
 public class DocumentEmbedding {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -32,7 +33,7 @@ public class DocumentEmbedding {
     @Column
     @JdbcTypeCode(SqlTypes.VECTOR)
     @Array(length = 384)
-    private float[] embedding;
+    private double[] embedding;
 
     private Date created_date;
 
@@ -52,7 +53,7 @@ public class DocumentEmbedding {
         return this.created_date;
     }
 
-    public float[] getEmbedding() {
+    public double[] getEmbedding() {
         return this.embedding;
     }
 
