@@ -12,11 +12,15 @@ import com.pratyush.core.model.Document;
 import com.pratyush.core.model.DocumentEmbedding;
 import com.pratyush.core.model.DocumentEmbeddingProjection;
 import com.pratyush.core.repository.DocumentEmbeddingRepository;
+import com.pratyush.core.repository.DocumentRepository;
 
 @Service
 public class SearchService {
     @Autowired
     DocumentEmbeddingRepository documentEmbeddingRepository;
+
+    @Autowired
+    DocumentRepository documentRepository;
 
     public List<DocumentEmbeddingProjection> getTopMatching(Integer topN, double[] embedding) {
         List<DocumentEmbedding>matches = documentEmbeddingRepository.findTopMatching(embedding);
@@ -31,9 +35,5 @@ public class SearchService {
             }
         }
         return results.subList(0, topN);
-    }
-
-    public List<DocumentEmbedding> findAll() {
-        return documentEmbeddingRepository.findAll();
     }
 }

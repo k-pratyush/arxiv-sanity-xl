@@ -8,10 +8,12 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.pratyush.docsearch.model.DocumentData;
 import com.pratyush.docsearch.model.Result;
+import com.pratyush.docsearch.server.DatabaseDriver;
 import com.pratyush.docsearch.server.OnRequestCallback;
 
 public class SearchWorker implements OnRequestCallback {
@@ -29,15 +31,21 @@ public class SearchWorker implements OnRequestCallback {
         return SerializationUtils.serialize(result);
     }
 
+    private Map<Long, String> getDocumentIdToDocument(List<Long> documentIds) {
+        DatabaseDriver databaseDriver = new DatabaseDriver();
+        return databaseDriver.getDocumentIdToDocument(documentIds);
+    }
+
     private Result createResult(Task task) throws FileNotFoundException {
-        List<String> documents = task.getDocuments();
+        Map<Long, String> docIdToDocs = getDocumentIdToDocument(task.getDocumentIds());
         Result result = new Result();
 
-        for(String document: documents) {
-            List<String> words = parseWordsFromDocument(document);
+        for(Map.Entry<Long, String> entry: docIdToDocs.entrySet()) {
+            List<String> words = parseWordsFromDocument(entry.getValue());
             DocumentData documentData = TFIDF.createDocumentData(words, task.getSearchTerms());
-            result.addDocumentData(document, documentData);
+            result.addDocumentData(entry.getKey(), documentData);
         }
+
         return result;
     }
 

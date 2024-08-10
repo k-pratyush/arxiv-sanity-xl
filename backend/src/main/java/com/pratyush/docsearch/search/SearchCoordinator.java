@@ -2,13 +2,11 @@ package com.pratyush.docsearch.search;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 import org.apache.zookeeper.KeeperException;
 
@@ -24,15 +22,12 @@ import com.pratyush.docsearch.server.WebClient;
 
 public class SearchCoordinator implements OnRequestCallback {
     private static final String ENDPOINT = "/search";
-    private static final String documentDirectory = "./resources/docs/";
     private final ServiceRegistry workerServiceRegistry;
     private final WebClient client;
-    private final List<String> documents;
 
     public SearchCoordinator(ServiceRegistry workerServiceRegistry, WebClient webClient) {
         this.workerServiceRegistry = workerServiceRegistry;
         this.client = webClient;
-        this.documents = readDocumentsList();
     }
 
     @Override
@@ -45,7 +40,6 @@ public class SearchCoordinator implements OnRequestCallback {
         } catch(InvalidProtocolBufferException e) {
             return SearchModel.Response.getDefaultInstance().toByteArray();
         }
-        
     }
 
     @Override
@@ -57,6 +51,7 @@ public class SearchCoordinator implements OnRequestCallback {
         SearchModel.Response.Builder searchResponse = SearchModel.Response.newBuilder();
 
         List<String> searchTerms = TFIDF.getWordsFromLine(request.getSearchQuery());
+        List<Long> documentIds = request.getDocumentIdsList();
         List<String> workers;
         try {
             workers = workerServiceRegistry.getServiceAddresses();
@@ -65,7 +60,7 @@ public class SearchCoordinator implements OnRequestCallback {
                 return searchResponse.build();
             }
 
-            List<Task> tasks = createTask(workers.size(), searchTerms);
+            List<Task> tasks = createTask(workers.size(), searchTerms, documentIds);
             List<Result> results = sendTasksToWorkers(workers, tasks);
             List<SearchModel.Response.DocumentStats> sortedDocs = aggregateResults(results, searchTerms);
 
@@ -79,30 +74,27 @@ public class SearchCoordinator implements OnRequestCallback {
     }
 
     private List<SearchModel.Response.DocumentStats> aggregateResults(List<Result> results, List<String> searchTerms) {
-        Map<String, DocumentData> allDocResults = new HashMap<>();
+        Map<Long, DocumentData> allDocResults = new HashMap<>();
 
         for(Result result: results) {
             allDocResults.putAll(result.getDocumentToDocumentData());
         }
 
-        Map<Double, List<String>> scoreToDocs = TFIDF.getDocumentsSortedByScore(searchTerms, allDocResults);
+        Map<Double, List<Long>> scoreToDocs = TFIDF.getDocumentsSortedByScore(searchTerms, allDocResults);
 
         return sortDocsByScore(scoreToDocs);
     }
 
-    private List<SearchModel.Response.DocumentStats> sortDocsByScore(Map<Double, List<String>> scoreToDocs) {
+    private List<SearchModel.Response.DocumentStats> sortDocsByScore(Map<Double, List<Long>> scoreToDocIds) {
         List<SearchModel.Response.DocumentStats> sortedDocs = new ArrayList<>();
 
-        for(Map.Entry<Double, List<String>> scoreDocPair: scoreToDocs.entrySet()) {
-            double score = scoreDocPair.getKey();
+        for(Map.Entry<Double, List<Long>> scoreDocIdPair: scoreToDocIds.entrySet()) {
+            double score = scoreDocIdPair.getKey();
 
-            for(String doc: scoreDocPair.getValue()) {
-                File documentPath = new File(doc);
-
+            for(Long docId: scoreDocIdPair.getValue()) {
                 SearchModel.Response.DocumentStats documentStats = SearchModel.Response.DocumentStats.newBuilder()
                     .setScore(score)
-                    .setDocumentName(documentPath.getName())
-                    .setDocumentSize(documentPath.length())
+                    .setDocumentId(docId)
                     .build();
                 sortedDocs.add(documentStats);
             }
@@ -131,48 +123,35 @@ public class SearchCoordinator implements OnRequestCallback {
 
             }
         }
-
         return results;
     }
-    
-    private List<Task> createTask(int numWorkers, List<String> searchTerms) {
 
-        List<List<String>> workerDocs = splitDocumnentsList(numWorkers, documents);
-
+    private List<Task> createTask(int numWorkers, List<String> searchTerms, List<Long> documentIds) {
+        List<List<Long>> workerDocIds = splitDocumentsList(numWorkers, documentIds);
         List<Task> tasks = new ArrayList<>();
 
-        for(List<String> docsForWorker: workerDocs) {
+        for(List<Long> docsForWorker: workerDocIds) {
             Task task = new Task(searchTerms, docsForWorker);
             tasks.add(task);
         }
         return tasks;
     }
 
-    private List<List<String>> splitDocumnentsList(int numWorkers, List<String> documents) {
-        int numDocsPerWorker = (documents.size() + numWorkers - 1) / numWorkers;
-
-        List<List<String>> workerDocs = new ArrayList<>();
+    private List<List<Long>> splitDocumentsList(int numWorkers, List<Long> documentIds) {
+        int numDocsPerWorker = (documentIds.size() + numWorkers - 1) / numWorkers;
+        List<List<Long>> workerDocIds = new ArrayList<>();
 
         for(int i = 0; i < numWorkers; i++) {
             int firstDocIdx = i * numDocsPerWorker;
-            int lastDocIdx = Math.min(firstDocIdx + numDocsPerWorker, documents.size());
+            int lastDocIdx = Math.min(firstDocIdx + numDocsPerWorker, documentIds.size());
 
             if(firstDocIdx > lastDocIdx) {
                 break;
             }
 
-            List<String> currentWorkerDocs = new ArrayList<>(documents.subList(firstDocIdx, lastDocIdx));
-            workerDocs.add(currentWorkerDocs);
+            List<Long> currentWorkerDocs = new ArrayList<>(documentIds.subList(firstDocIdx, lastDocIdx));
+            workerDocIds.add(currentWorkerDocs);
         }
-        return workerDocs;
+        return workerDocIds;
     }
-
-    private List<String> readDocumentsList() {
-        File docDirectory = new File(documentDirectory);
-        return Arrays.asList(docDirectory.list())
-            .stream()
-            .map(docName -> documentDirectory + "/" + docName)
-            .collect(Collectors.toList());
-    }
-
 }

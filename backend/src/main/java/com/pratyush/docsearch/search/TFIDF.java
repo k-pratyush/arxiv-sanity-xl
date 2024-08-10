@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.TreeMap;
 
 import com.pratyush.docsearch.model.DocumentData;
@@ -30,11 +31,11 @@ public class TFIDF {
         return documentData;
     }
 
-    private static double getInverseDocumentFrequency(String term, Map<String, DocumentData> documentResults) {
+    private static double getInverseDocumentFrequency(String term, Map<Long, DocumentData> documentResults) {
         double nt = 0;
 
-        for(String document: documentResults.keySet()) {
-            DocumentData documentData = documentResults.get(document);
+        for(Long documentId: documentResults.keySet()) {
+            DocumentData documentData = documentResults.get(documentId);
             double frequency = documentData.getFrequency(term);
 
             if(frequency > 0.0) {
@@ -44,7 +45,7 @@ public class TFIDF {
         return nt == 0? 0 : Math.log10(documentResults.size() / nt);
     }
 
-    private static Map<String, Double> getTermToInverseDocumentFrequencyMap(List<String> terms, Map<String, DocumentData> documentResults) {
+    private static Map<String, Double> getTermToInverseDocumentFrequencyMap(List<String> terms, Map<Long, DocumentData> documentResults) {
         Map<String, Double> termToIDF = new HashMap<>();
 
         for(String term: terms) {
@@ -54,16 +55,16 @@ public class TFIDF {
         return termToIDF;
     }
 
-    public static Map<Double, List<String>> getDocumentsSortedByScore(List<String> terms, Map<String, DocumentData> documentResults) {
-        TreeMap<Double, List<String>> scoreToDocuments = new TreeMap<>();
+    public static NavigableMap<Double, List<Long>> getDocumentsSortedByScore(List<String> terms, Map<Long, DocumentData> documentResults) {
+        TreeMap<Double, List<Long>> scoreToDocuments = new TreeMap<>();
 
         Map<String, Double> termToIDF = getTermToInverseDocumentFrequencyMap(terms, documentResults);
-        for(String document: documentResults.keySet()) {
-            DocumentData documentData = documentResults.get(document);
+        for(Long documentId: documentResults.keySet()) {
+            DocumentData documentData = documentResults.get(documentId);
             double score = calculateDocumentScore(terms, documentData, termToIDF);
-            addDocumentScoreToTreeMap(scoreToDocuments, score, document);
+            addDocumentScoreToTreeMap(scoreToDocuments, score, documentId);
         }
-        
+
         return scoreToDocuments.descendingMap();
     }
 
@@ -78,15 +79,15 @@ public class TFIDF {
         return score;
     }
 
-    private static void addDocumentScoreToTreeMap(TreeMap<Double, List<String>> scoreToDoc, double score, String document) {
-        List<String> documentsWithCurrentScore = scoreToDoc.get(score);
+    private static void addDocumentScoreToTreeMap(TreeMap<Double, List<Long>> scoreToDocId, double score, Long documentId) {
+        List<Long> documentIdsWithCurrentScore = scoreToDocId.get(score);
 
-        if(documentsWithCurrentScore == null) {
-            documentsWithCurrentScore = new ArrayList<>();
+        if(documentIdsWithCurrentScore == null) {
+            documentIdsWithCurrentScore = new ArrayList<>();
         }
 
-        documentsWithCurrentScore.add(document);
-        scoreToDoc.put(score, documentsWithCurrentScore);
+        documentIdsWithCurrentScore.add(documentId);
+        scoreToDocId.put(score, documentIdsWithCurrentScore);
     }
 
     public static List<String> getWordsFromLine(String line) {
