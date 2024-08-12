@@ -2,7 +2,7 @@ syntax="proto2";
 
 package distributed.search;
 
-option java_package = "com.pratyush.docsearch.model";
+option java_package = "com.pratyush.core.model";
 
 option java_outer_classname = "SearchModel";
 
