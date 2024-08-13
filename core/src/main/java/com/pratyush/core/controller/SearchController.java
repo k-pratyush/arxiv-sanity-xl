@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import com.pratyush.core.model.Document;
 import com.pratyush.core.model.DocumentEmbedding;
 import com.pratyush.core.model.DocumentEmbeddingProjection;
-import com.pratyush.core.model.SearchModel;
+import com.pratyush.core.model.DocumentStats;
 import com.pratyush.core.model.exchanges.embedding_service.EmbeddingRequest;
 import com.pratyush.core.model.exchanges.embedding_service.EmbeddingResponse;
 import com.pratyush.core.service.DocumentService;
@@ -25,7 +25,7 @@ import org.springframework.web.client.RestTemplate;
 public class SearchController {
 
     private RestTemplate restTemplate;
-    private String embeddingUri = "http://localhost:8000/embedding";
+    private final String embeddingUri = "http://localhost:8000/embedding";
 
     @Autowired
     private SearchService searchService;
@@ -47,20 +47,14 @@ public class SearchController {
             EmbeddingRequest request = new EmbeddingRequest(query);
             EmbeddingResponse response = this.restTemplate.postForObject(this.embeddingUri,request,EmbeddingResponse.class);
             return searchService.getTopMatching(numResults,response.data);
-        } else if(method == "tfidf" || method == "bm25") {
+        } else if(method.equals("tfidf") || method.equals("bm25")) {
             List<Document> documents = documentService.getAllPapers();
             List<Long> documentIds = documents.stream()
                                             .map(doc -> doc.getId())
                                             .collect(Collectors.toList());
 
-            SearchModel.Request.Builder searchRequest = SearchModel.Request.newBuilder();
-
-            searchRequest.setSearchMethod(method);
-            searchRequest.setSearchQuery(query);
-            searchRequest.addAllDocumentIds(documentIds);
-            searchRequest.build();
-
-            // return searchService.getTopMatching(numResults,response.data);
+            List<DocumentStats> documentStats = searchService.getAllDocumentStats(query, method, documentIds);
+            return searchService.getTopMatching(numResults, documentStats);
         }
         return new ArrayList<>();
     }

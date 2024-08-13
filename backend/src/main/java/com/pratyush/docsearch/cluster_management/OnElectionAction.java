@@ -58,7 +58,7 @@ public class OnElectionAction implements OnElectionCallback {
             SearchWorker searchWorker = new SearchWorker();
             webServer = new WebServer(port, searchWorker);
             webServer.startServer();
-            String currentServerAddress = String.format("http://%s:%d",InetAddress.getLocalHost().getCanonicalHostName(),
+            String currentServerAddress = String.format("http://%s:%d%s",InetAddress.getLocalHost().getCanonicalHostName(),
                                                 port, searchWorker.getEndpoint());
             workerServiceRegistry.registerToCluster(currentServerAddress);
         } catch (KeeperException e) {

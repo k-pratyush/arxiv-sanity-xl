@@ -21,9 +21,12 @@ public class WebClient {
             .POST(HttpRequest.BodyPublishers.ofByteArray(payload))
             .uri(URI.create(url))
             .build();
-        
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
+
+            CompletableFuture<Result> res =  client.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
             .thenApply(HttpResponse::body)
-            .thenApply(responsebody -> (Result) SerializationUtils.deserialize(responsebody));
+            .thenApply(responseBody -> (Result) SerializationUtils.deserialize(responseBody));
+            System.out.println("RES");
+            System.out.println(res);
+            return res;
     }
 }

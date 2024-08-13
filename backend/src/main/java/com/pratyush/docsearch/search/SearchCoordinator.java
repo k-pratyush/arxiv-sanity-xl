@@ -1,6 +1,5 @@
 package com.pratyush.docsearch.search;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -105,24 +104,22 @@ public class SearchCoordinator implements OnRequestCallback {
 
     private List<Result> sendTasksToWorkers(List<String> workers, List<Task> tasks) {
         CompletableFuture<Result>[] futures = new CompletableFuture[workers.size()];
-
-        for(int i = 0; i < workers.size(); i++) {
+        for (int i = 0; i < workers.size(); i++) {
             String worker = workers.get(i);
             Task task = tasks.get(i);
-
             byte[] payload = SerializationUtils.serialize(task);
             futures[i] = client.sendTask(worker, payload);
         }
 
         List<Result> results = new ArrayList<>();
-        for(CompletableFuture<Result> future: futures) {
+        for (CompletableFuture<Result> future : futures) {
             try {
                 Result result = future.get();
                 results.add(result);
             } catch (InterruptedException | ExecutionException e) {
-
             }
         }
+        System.out.println(String.format("Received %d/%d results", results.size(), tasks.size()));
         return results;
     }
 
