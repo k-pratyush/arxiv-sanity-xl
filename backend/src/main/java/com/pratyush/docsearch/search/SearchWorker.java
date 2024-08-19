@@ -35,10 +35,11 @@ public class SearchWorker implements OnRequestCallback {
     private Result createResult(Task task) throws FileNotFoundException {
         Map<Long, String> docIdToDocs = getDocumentIdToDocument(task.getDocumentIds());
         Result result = new Result();
-
+        RankingMethod rankingMethod = RankMethodFactory.getRankingAlgorithm(task.getRankingMethod());
+        System.out.println("RANKING METHOD: " + rankingMethod);
         for(Map.Entry<Long, String> entry: docIdToDocs.entrySet()) {
-            List<String> words = TFIDF.getWordsFromLine(entry.getValue());
-            DocumentData documentData = TFIDF.createDocumentData(words, task.getSearchTerms());
+            List<String> words = rankingMethod.getWordsFromLine(entry.getValue());
+            DocumentData documentData = rankingMethod.createDocumentData(words, task.getSearchTerms());
             result.addDocumentData(entry.getKey(), documentData);
         }
 

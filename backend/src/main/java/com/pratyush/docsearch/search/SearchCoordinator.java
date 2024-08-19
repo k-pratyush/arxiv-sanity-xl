@@ -49,7 +49,8 @@ public class SearchCoordinator implements OnRequestCallback {
     private SearchModel.Response createResponse(SearchModel.Request request) {
         SearchModel.Response.Builder searchResponse = SearchModel.Response.newBuilder();
 
-        List<String> searchTerms = TFIDF.getWordsFromLine(request.getSearchQuery());
+        RankingMethod rankingMethod = RankMethodFactory.getRankingAlgorithm(request.getSearchMethod());
+        List<String> searchTerms = rankingMethod.getWordsFromLine(request.getSearchQuery());
         List<Long> documentIds = request.getDocumentIdsList();
         List<String> workers;
         try {
@@ -59,9 +60,9 @@ public class SearchCoordinator implements OnRequestCallback {
                 return searchResponse.build();
             }
 
-            List<Task> tasks = createTask(workers.size(), searchTerms, documentIds);
+            List<Task> tasks = createTask(workers.size(), searchTerms, documentIds, request.getSearchMethod());
             List<Result> results = sendTasksToWorkers(workers, tasks);
-            List<SearchModel.Response.DocumentStats> sortedDocs = aggregateResults(results, searchTerms);
+            List<SearchModel.Response.DocumentStats> sortedDocs = aggregateResults(results, searchTerms, rankingMethod);
 
             searchResponse.addAllRelevantDocuments(sortedDocs);
             return searchResponse.build();
@@ -72,14 +73,14 @@ public class SearchCoordinator implements OnRequestCallback {
         return searchResponse.build();
     }
 
-    private List<SearchModel.Response.DocumentStats> aggregateResults(List<Result> results, List<String> searchTerms) {
+    private List<SearchModel.Response.DocumentStats> aggregateResults(List<Result> results, List<String> searchTerms, RankingMethod rankingMethod) {
         Map<Long, DocumentData> allDocResults = new HashMap<>();
 
         for(Result result: results) {
             allDocResults.putAll(result.getDocumentToDocumentData());
         }
 
-        Map<Double, List<Long>> scoreToDocs = TFIDF.getDocumentsSortedByScore(searchTerms, allDocResults);
+        Map<Double, List<Long>> scoreToDocs = rankingMethod.getDocumentsSortedByScore(searchTerms, allDocResults);
 
         return sortDocsByScore(scoreToDocs);
     }
@@ -123,12 +124,12 @@ public class SearchCoordinator implements OnRequestCallback {
         return results;
     }
 
-    private List<Task> createTask(int numWorkers, List<String> searchTerms, List<Long> documentIds) {
+    private List<Task> createTask(int numWorkers, List<String> searchTerms, List<Long> documentIds, String searchMethod) {
         List<List<Long>> workerDocIds = splitDocumentsList(numWorkers, documentIds);
         List<Task> tasks = new ArrayList<>();
 
         for(List<Long> docsForWorker: workerDocIds) {
-            Task task = new Task(searchTerms, docsForWorker);
+            Task task = new Task(searchTerms, docsForWorker, searchMethod);
             tasks.add(task);
         }
         return tasks;

@@ -14,4 +14,8 @@ public class DocumentData implements Serializable {
     public double getFrequency(String term) {
         return termToFrequency.get(term);
     }
+
+    public int size() {
+        return this.termToFrequency.size();
+    }
 }
