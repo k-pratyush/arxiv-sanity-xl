@@ -121,7 +121,7 @@ public class SearchService {
         List<Document> documents = documentRepository.findAllById(documentIds.subList(0, numResults));
         for(Document document: documents) {
             DocumentEmbeddingProjection documentEmbeddingProjection = 
-                new DocumentEmbeddingProjection(document.getName(), document.getUrl());
+                new DocumentEmbeddingProjection(document.getUrl(), document.getName());
             results.add(documentEmbeddingProjection);
         }
         return results;

@@ -15,6 +15,8 @@ import com.pratyush.core.model.exchanges.embedding_service.EmbeddingRequest;
 import com.pratyush.core.model.exchanges.embedding_service.EmbeddingResponse;
 import com.pratyush.core.service.DocumentService;
 import com.pratyush.core.service.SearchService;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +41,7 @@ public class SearchController {
 
     @SuppressWarnings("null")
     @GetMapping("")
+    @CrossOrigin(origins = "http://localhost:3000")
     public List<DocumentEmbeddingProjection> getQueryResults(@RequestParam(required = true) String query,
                                           @RequestParam(required = true) Integer numResults,
                                           @RequestParam(required = false) String method) {
@@ -60,6 +63,7 @@ public class SearchController {
     }
 
     @GetMapping("/")
+    @CrossOrigin(origins = "http://localhost:3000")
     public List<DocumentEmbedding> getAll() {
         return documentService.findAll();
     }
