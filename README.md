@@ -23,7 +23,7 @@ A distributed search engine that helps researchers find and get recommendations 
     - start time - The first node to register to Zookeeper becomes the coordinator.
     - All backend nodes are Zookeeper watchers - Every node that gets registered to zookeeper watches and health-checks one previous node for downtime (like a daisy chain). If the node is down, the watcher notifies zookeeper for leader check and re-election if required.
 
-#### Build Project [WIP]
+#### Build Project
 ```
 - Requirements:
     - Redis (currently running on localhost)
@@ -65,6 +65,11 @@ A distributed search engine that helps researchers find and get recommendations 
         - pg_password=POSTGRES PASSWORD
     - build the project using: 'mvn clean package'
     - run the springboot app
+
+- client:
+    - install dependencies: 'npm install'
+    - run the client: 'npm start'
+    - the app should be running on 'localhost:3000'
 ```
 
 <!-- - proto compile: /Users/pratyushkerhalkar/Downloads/protoc-27-2/bin/protoc -I src/main/java/ --java_out=src/main/java/com/pratyush/docsearch/model/ src/main/java/com/pratyush/docsearch/model/search_cluster.proto
