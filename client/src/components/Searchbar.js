@@ -8,7 +8,6 @@ import Typography from '@mui/material/Typography';
 import InputBase from '@mui/material/InputBase';
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@material-ui/core/Menu';
-import SearchIcon from '@material-ui/icons/Search';
 import AccountCircle from '@material-ui/icons/AccountCircle';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
@@ -19,30 +18,19 @@ import { searchDocuments } from "../api";
 import { Grid } from '@mui/material';
 
 const Search = styled('div')(({ theme }) => ({
-  position: 'relative',
+  position: 'absolute',
   borderRadius: theme.shape.borderRadius,
   backgroundColor: alpha(theme.palette.common.white, 0.15),
   '&:hover': {
     backgroundColor: alpha(theme.palette.common.white, 0.25),
   },
-  marginRight: theme.spacing(2),
-  marginLeft: 0,
-  width: 1000,
+  marginLeft: 10,
+  width: '100',
   [theme.breakpoints.up('sm')]: {
-    marginLeft: theme.spacing(3),
-    width: 'auto',
-    minWidth: '600px',
+    marginLeft: theme.spacing(0),
+    width: '50%',
+    minWidth: '60px',
   },
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: '100%',
-  position: 'absolute',
-  pointerEvents: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
 }));
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
@@ -50,11 +38,11 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   '& .MuiInputBase-input': {
     padding: theme.spacing(1, 1, 1, 0),
     // vertical padding + font size from searchIcon
-    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    paddingLeft: `calc(1em + ${theme.spacing(2)})`,
     transition: theme.transitions.create('width'),
     width: '100%',
     [theme.breakpoints.up('md')]: {
-      width: '20ch',
+      width: '20',
     },
   },
 }));
@@ -110,23 +98,20 @@ export default function SearchBar(props) {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
         <Toolbar>
-          <Grid container>
-            <Grid item sx={{ textAlign: "left", fontWeight: "fontWeightMedium" }}>
-              <Typography
-                variant="h6"
-                noWrap
-                component="div"
-                sx={{ display: { xs: 'none', sm: 'block' } }}
-              >
-                Arxiv Sanity XL
-              </Typography>
+          <Grid container gridAutoColumns={4}>
+            <Grid item xs={1}>
+            <Typography
+              variant="h6"
+              // noWrap
+              component="div"
+              sx={{ display: { xs: 'none', sm: 'block', paddingTop: 10 } }}
+            >
+              Arxiv Sanity XL
+            </Typography>
             </Grid>
-            <FormControl onSubmit={handleQuerySubmit}>
-            <Grid item sx={{ textAlign: "left" }}>
+              <FormControl onSubmit={handleQuerySubmit}>
+              <Grid item xs={4}>
                 <Search>
-                  <SearchIconWrapper>
-                    <SearchIcon />
-                  </SearchIconWrapper>
                   <StyledInputBase
                     placeholder="Search…"
                     inputProps={{ 'aria-label': 'search' }}
@@ -134,26 +119,25 @@ export default function SearchBar(props) {
                     onChange={e => setSearchQuery(e.target.value)}
                   />
                 </Search>
-            </Grid>
-            <Grid item sx={{ textAlign: "left" }}>
-              <RadioGroup
-                row
-                aria-labelledby="demo-row-radio-buttons-group-label"
-                name="row-radio-buttons-group"
-                value={searchMethod}
-                onChange={e => setSearchMethod(e.target.value)}
-              >
-                <FormControlLabel value="vector_ann" control={<Radio sx={{ ...radioProperties }} />} label="Vector ANN" />
-                <FormControlLabel value="tfidf" control={<Radio sx={{ ...radioProperties }} />} label="TF-IDF" />
-                <FormControlLabel value="bm25" control={<Radio sx={{ ...radioProperties }} />} label="BM-25" />
-              </RadioGroup>
-            </Grid>
-            <Grid item>
-              <Button onClick={handleQuerySubmit} style={{ color: "black" }} type="submit" color='primary'>Search</Button>
-            </Grid>
+              </Grid>
+              <Grid item xs={3}>
+                <Button onClick={handleQuerySubmit} sx={{ color: "black", marginLeft: 30, width: 10 }} type="submit" color='primary'>Search</Button>
+              </Grid>
+              <Grid item>
+                <RadioGroup
+                  row
+                  aria-labelledby="demo-row-radio-buttons-group-label"
+                  name="row-radio-buttons-group"
+                  value={searchMethod}
+                  sx={{marginLeft: 0, marginTop: 0}}
+                  onChange={e => setSearchMethod(e.target.value)}
+                >
+                  <FormControlLabel value="vector_ann" control={<Radio sx={{ ...radioProperties }} />} label="Vector ANN" />
+                  <FormControlLabel value="tfidf" control={<Radio sx={{ ...radioProperties }} />} label="TF-IDF" />
+                  <FormControlLabel value="bm25" control={<Radio sx={{ ...radioProperties }} />} label="BM-25" />
+                </RadioGroup>
+              </Grid>
             </FormControl>
-          </Grid>
-
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
             <IconButton
@@ -168,6 +152,7 @@ export default function SearchBar(props) {
               <AccountCircle />
             </IconButton>
           </Box>
+          </Grid>
         </Toolbar>
       </AppBar>
       {renderMenu}
