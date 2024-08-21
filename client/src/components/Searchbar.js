@@ -10,6 +10,13 @@ import MenuItem from '@mui/material/MenuItem';
 import Menu from '@material-ui/core/Menu';
 import SearchIcon from '@material-ui/icons/Search';
 import AccountCircle from '@material-ui/icons/AccountCircle';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormControl from '@mui/material/FormControl';
+import Button from '@mui/material/Button';
+import { searchDocuments } from "../api";
+import { Grid } from '@mui/material';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -20,7 +27,7 @@ const Search = styled('div')(({ theme }) => ({
   },
   marginRight: theme.spacing(2),
   marginLeft: 0,
-  width: 100,
+  width: 1000,
   [theme.breakpoints.up('sm')]: {
     marginLeft: theme.spacing(3),
     width: 'auto',
@@ -52,8 +59,15 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }));
 
-export default function SearchBar() {
+const radioProperties = {
+  color: 'black','&.Mui-checked': {color: 'black'}
+}
+
+export default function SearchBar(props) {
   const [anchorEl, setAnchorEl] = React.useState(null);
+
+  const [searchMethod, setSearchMethod] = React.useState("vector_ann");
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const isMenuOpen = Boolean(anchorEl);
 
@@ -61,6 +75,10 @@ export default function SearchBar() {
     setAnchorEl(event.currentTarget);
   };
 
+  const handleQuerySubmit = (event) => {
+    searchDocuments(15, searchQuery, searchMethod)
+    .then(res => props.setQueryResults(res.data))
+  };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
@@ -92,26 +110,52 @@ export default function SearchBar() {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
         <Toolbar>
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
-            sx={{ display: { xs: 'none', sm: 'block' } }}
-          >
-            Arxiv Sanity XL
-          </Typography>
-          <Search>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Search…"
-              inputProps={{ 'aria-label': 'search' }}
-            />
-          </Search>
+          <Grid container>
+            <Grid item sx={{ textAlign: "left", fontWeight: "fontWeightMedium" }}>
+              <Typography
+                variant="h6"
+                noWrap
+                component="div"
+                sx={{ display: { xs: 'none', sm: 'block' } }}
+              >
+                Arxiv Sanity XL
+              </Typography>
+            </Grid>
+            <FormControl onSubmit={handleQuerySubmit}>
+            <Grid item sx={{ textAlign: "left" }}>
+                <Search>
+                  <SearchIconWrapper>
+                    <SearchIcon />
+                  </SearchIconWrapper>
+                  <StyledInputBase
+                    placeholder="Search…"
+                    inputProps={{ 'aria-label': 'search' }}
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                </Search>
+            </Grid>
+            <Grid item sx={{ textAlign: "left" }}>
+              <RadioGroup
+                row
+                aria-labelledby="demo-row-radio-buttons-group-label"
+                name="row-radio-buttons-group"
+                value={searchMethod}
+                onChange={e => setSearchMethod(e.target.value)}
+              >
+                <FormControlLabel value="vector_ann" control={<Radio sx={{ ...radioProperties }} />} label="Vector ANN" />
+                <FormControlLabel value="tfidf" control={<Radio sx={{ ...radioProperties }} />} label="TF-IDF" />
+                <FormControlLabel value="bm25" control={<Radio sx={{ ...radioProperties }} />} label="BM-25" />
+              </RadioGroup>
+            </Grid>
+            <Grid item>
+              <Button onClick={handleQuerySubmit} style={{ color: "black" }} type="submit" color='primary'>Search</Button>
+            </Grid>
+            </FormControl>
+          </Grid>
+
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-
             <IconButton
               size="large"
               edge="end"
